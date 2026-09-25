@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <pre id="output"></pre>
+    <div id="buttons"></div>
+  <script src="odin.js"></script>
+  <script>
+    const mem = new odin.WasmMemoryInterface();
+    const input_buffer = []
+    odin.runWasm("hello.wasm", null, {
+        "my_env": {
+            js_write: (ptr_text, len_text) => document.getElementById("output").innerText += mem.loadString(ptr_text, len_text),
+            js_can_read: () => input_buffer.length > 0,
+            js_read: (ptr_command, cap_command) => {
+                const text = input_buffer.shift()
+                const bytes = new TextEncoder().encode(text);
+                const n = Math.min(bytes.length, cap_command);
+                new Uint8Array(mem.memory.buffer, ptr_command, n).set(bytes.subarray(0, n));
+                return n;            
+            },
+            js_clear: () => {
+                document.getElementById("output").innerText = "";
+                document.getElementById("buttons").innerText="";
+            },
+            js_add_button: (ptr_text, len_text, ptr_command, len_command) => {
+                const btn = document.createElement("button");
+                btn.textContent = mem.loadString(ptr_text, len_text)
+                const cmd = mem.loadString(ptr_command, len_command)
+                btn.onclick = () => input_buffer.push(cmd)
+                document.getElementById("buttons").appendChild(btn)
+            }
+        }
+    }, mem);
+  </script>
+</body>
+</html>
